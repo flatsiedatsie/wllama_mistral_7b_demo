@@ -225,17 +225,8 @@
 		    color: purple;
 		}
 		
-		
-		#download-container{
-			display:flex;
-			flex-direction:column;
-		}
-		#download-container progress{
-			width:100%;
-		}
-		#download-container:not(:empty):before{
-			content:"Downloading";
-			display:block;
+		#time-remaining{
+			
 		}
 		
 		#output-container{
@@ -282,6 +273,7 @@
 			<div id="progress-bar-container">
 				<p>Downloading...</p>
 	    		<progress id="progress-bar" aria-label="Generating…"></progress>
+				<div id="time-remaining"></div>
 			</div>
 			
 			
@@ -309,12 +301,7 @@
 	      	  	<button id="submit-button"><img src="submit.svg" width="50" alt="submit"/></button>
 				<button id="interrupt-button">🛑</button>
 	    	</div>
-		
-	  	<div id="response"></div>
-	  
-	  	<div id="status"></div>
-		<div id="download-container"></div>
-    	<div id="downloading-model"></div>
+		</div>
 		
 		
 	  
@@ -328,31 +315,24 @@
 		
 		import { Wllama } from './wllama/index.js';
 		
-		let model_downloaded = false;
-		let smaller_model = false;
+		let model_downloaded = false; // only for this demo
+		let smaller_model = false; // only for this demo
+		let previous_download_percentage = 0; // only for this demo
+		let previous_percentage_time = 0; // only for this demo
 		
 		window.interrupt_wllama = false; // when set to true, this will interrupt inference that is in progress
 
-
-		const downloading_model_el = document.getElementById('downloading-model');
-		const download_container_el = document.getElementById('download-container');
-		
+		// Some elements on the page
 		const prompt_el = document.getElementById('prompt');
-		
 		const progress_bar_container_el = document.getElementById('progress-bar-container');
 		const progress_bar_el = document.getElementById('progress-bar');
-		const duration_el = document.getElementById('duration');
-		const do_sample_el = document.getElementById('do-sample');
+		const time_remaining_el = document.getElementById('time-remaining');
 		const temperature_el = document.getElementById('temperature');
 		const output_container_el = document.getElementById('output-container');
 		
-		const status_el = document.getElementById('status');
-		const response_el = document.getElementById('response');
-		
-		
 
 
-		// Wllama caches files in: wllama_cache
+		// You'll need to tell Wllama where some of it's files are
 		const CONFIG_PATHS = {
 		  'single-thread/wllama.js'       : './wllama/single-thread/wllama.js',
 		  'single-thread/wllama.wasm'     : './wllama/single-thread/wllama.wasm',
@@ -362,10 +342,10 @@
 		};
 		
 
-		// The simple version would be:
-		// window.llama_cpp_app = new Wllama(CONFIG_PATHS);
 		
-		// But here we showcase how you can parse output from Llama.cpp:
+		
+		// Here we showcase a more advanced example of how you can parse output from Llama.cpp:
+		// A simpler version would be: window.llama_cpp_app = new Wllama(CONFIG_PATHS);
 	    window.llama_cpp_app = new Wllama(CONFIG_PATHS, {
 			logger: {
 				debug: (...args) => console.debug('🔧', ...args),
@@ -377,8 +357,9 @@
 	    console.log("new Wllama object created: ", window.llama_cpp_app);
 
 		
-		let model_settings = {};
+		let model_settings = {}; // Wllama has lots of low-level settings which you can use to fine-tune Llama.cpp to your hearts content
 		
+		// Yes that's a 32K context model that we're loading.
 		let model_url = [
 "https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00001-of-00027.gguf",
 "https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00002-of-00027.gguf",
@@ -409,6 +390,7 @@
 "https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00027-of-00027.gguf"
 		]
 		
+		// For this demo it's also possible to load a much smaller model, which will also run much faster. This one, Danube 2, has an 8K context
 	    if(window.location.href.indexOf('smaller') != -1 || window.location.search.indexOf('smaller') != -1){
 			smaller_model = true;
 			model_url = 'https://huggingface.co/bartowski/h2o-danube2-1.8b-chat-GGUF/resolve/main/h2o-danube2-1.8b-chat-Q5_0.gguf';
@@ -419,7 +401,7 @@
 		model_settings['n_seq_max'] = 1; // should generally be 1.
 		model_settings['n_batch'] = 1024; // the desired batch size
 		//model_settings['n_threads'] = 4; // You can manually set how many threads will be used. 
-		model_settings['cache_type_k'] = 'q4_0'; // can speed up most models by quantizing the context, but some models crash when it's enabled
+		model_settings['cache_type_k'] = 'q4_0'; // can lower the memory use of most models by quantizing the context, but some models crash when it's enabled.
 		
 		// Handle download progress
 		model_settings['progressCallback'] = ({ loaded, total }) => {
@@ -428,14 +410,44 @@
 			if(loaded == total){
 				console.log("download complete");
 				progress_bar_container_el.style.display = 'none';
+				output_container_el.textContent = 'Warming up...';
+				previous_download_percentage = 0;
+				previous_percentage_time = 0;
 			}
+			
+			const percentage = Math.floor((loaded/total) * 100);
+			
+			if(percentage > previous_download_percentage){
+				
+				if(previous_percentage_time > 0){
+					const delta = Date.now() - previous_percentage_time;
+					const percent_to_go = 100 - percentage;
+					const time_remaining = (percent_to_go * delta) / 1000;
+					
+					let remaining_minutes = Math.floor(time_remaining / 60);
+					let remaining_seconds = Math.round(time_remaining % 60);
+					if(remaining_seconds < 10){
+						remaining_seconds = '0' + remaining_seconds;
+					}
+					let time_remaining_text = remaining_seconds + 's to go'
+					if(remaining_minutes > 0){
+						time_remaining_text = remaining_minutes + 'm ' + time_remaining_text;
+					}
+					time_remaining_el.textContent = '⏳ ' + time_remaining_text;
+				}
+				
+				previous_download_percentage = percentage;
+				previous_percentage_time = Date.now();
+				
+			}
+			
 		}
 		
 		
 		
 		
 		
-		// Download button
+		// Download button (removed to simplify the demo)
 		/*
 		const download_button = document.getElementById('download-button');
 		download_button.addEventListener('click', () => {
@@ -448,14 +460,13 @@
 		const interrupt_button = document.getElementById('interrupt-button');
 		interrupt_button.addEventListener('click', () => {
 			console.log("Interrupting inference");
-			window.interrupt_wllama = true;
+			window.interrupt_wllama = true; // Wllama will notice that this variable was set to true
 		});
 		
 		// Submit button
 		const submit_button = document.getElementById('submit-button');
 		submit_button.addEventListener('click', () => {
-			console.log("Here we go");
-			//make_funky_music(prompt_el.value);
+			console.log("Here we go!");
 			infer(prompt_el.value);
 		});
 		
@@ -485,6 +496,7 @@
 				// The first time the model should be downloaded first
 				if(model_downloaded == false){
 					await download_model(model_url,model_settings);
+					model_downloaded = true;
 				}
 				
 				document.body.classList.add('running');
