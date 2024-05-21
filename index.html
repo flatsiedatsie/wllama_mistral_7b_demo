@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Qwen</title>
+	
+	<style>
+		
+		
+		:root{
+		    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+		    line-height: 1.5;
+		    font-weight: 400;
+		    color: #213547;
+		    background-color: #fff;
+		    font-synthesis: none;
+		    text-rendering: optimizeLegibility;
+		    -webkit-font-smoothing: antialiased;
+		    -moz-osx-font-smoothing: grayscale;
+		    -webkit-text-size-adjust: 100%;
+		}
+		
+		*{
+			box-sizing:border-box;
+		}
+		
+		body{
+			font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+			background-color: rgb(243 244 246);
+			padding:2rem;
+			display:flex;
+			align-items:center;
+			justify-content:center;
+			height:100vh;
+			width:100vw;
+			
+		}
+		
+		
+		h1{
+			color: rgb(31,41,55);
+			font-weight: 600;
+			text-align: center;
+		}
+		
+		h2{
+			font-weight:500;
+		    font-size: 1rem;
+		    line-height: 1.5rem;
+			text-align: center;
+		}
+		
+		label{
+		    font-size: .875rem;
+		    line-height: 1.25rem;
+		}
+		
+		textarea{
+			border: 1px solid rgb(209,213,219);
+			width:100%;
+			border-radius: .375rem;
+			resize: vertical;
+		    font-family: inherit;
+		    font-feature-settings: inherit;
+		    font-variation-settings: inherit;
+		    font-size: 100%;
+		    font-weight: inherit;
+		    line-height: inherit;
+		    color: inherit;
+		}
+		
+		input[type="range"]{
+			flex-grow:1;
+		}
+		
+		body.doing-smaller .hide-if-smaller{
+			display:none;
+		}
+		
+		#logo{
+			border-radius:5px;
+		}
+		
+		
+		#centered{
+			display:flex;
+			flex-direction:column;
+			max-width: 36rem;
+			margin:0 auto;
+			max-height:100vh;
+			max-height:-webkit-fill-available;
+			padding: 2rem;
+			border-radius: .5rem;
+			overflow:auto;
+			background-color:white;
+		    --tw-shadow: 0 10px 15px -3px rgb(0 0 0 / .1), 0 4px 6px -4px rgb(0 0 0 / .1);
+		    --tw-shadow-colored: 0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);
+		    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+		    
+		}
+		
+		#chat-container{
+			flex-grow:1;
+		}
+		
+		
+		/*
+		#progress-bar:before{
+			content:'Downloading...';
+			display:inline-block;
+			position:relative;
+			top:-.6rem;
+		}*/
+		#prompt{
+			width:100%;
+			height:100px;
+			padding:.5rem;
+			box-sizing:border-box;
+		}
+		
+		.setting{
+			justify-content:space-between;
+			border-bottom:1px solid rgba(0, 0, 0, .1);
+			margin:.8rem 0;
+			padding:.3rem 0;
+			width:300px;
+		}
+		.flex{
+			display:flex;
+		}
+		.column{
+			flex-direction:column;
+		}
+		
+		
+		.button-container{
+			padding:1rem;
+			text-align: center;
+		}
+		
+		.button-container > button{
+			margin:5px;
+			width:82px;
+		}
+		
+		button{
+			padding:.5rem 1rem;
+			border-radius:.375rem;
+			cursor:pointer;
+			border:none;
+			background-color: rgb(59,130,246);
+			color:white;
+			font-size: 100%;
+		}
+		button:hover{
+			background-color: rgb(37,99,235);
+		}
+		
+		
+		.running #submit-button{
+			pointer-events:none;
+			opacity:.5;
+		}
+		
+		#download-button{
+			margin-bottom:4rem;
+		}
+		
+		#intertupt-button{
+			font-size: 1.5rem;
+		}
+		
+		body.downloading #download-button,
+		body.downloading #download-explanation,
+		body:not(.not-downloaded-yet) #download-button,
+		body:not(.not-downloaded-yet) #download-explanation,
+		body:not(.running) #interrupt-button{
+			display:none;
+		}
+		
+		
+		#progress-bar-container{
+			border-radius:10px;
+			padding:1rem 2rem;
+			margin:2rem 0;
+		}
+		
+		#interrupt-button,
+		.running #output-container,
+		#progress-bar-container{
+		    background-size: 250% 250%;
+			background-image: linear-gradient(-90deg,
+		            rgba(59, 173, 227, .5) 0%,
+					rgba(59, 173, 227, .5) 42%,
+		            rgba(87, 111, 230, .5) 50%,
+		            rgba(152, 68, 183, .5) 51%,
+					rgba(59, 173, 227, .5) 56%,
+		            rgba(59, 173, 227, .5) 100%);
+			animation: bg-sweep-to-right 2s linear infinite;
+		}
+		@keyframes bg-sweep-to-right {
+		    0% {
+		        background-position: 100% 50%
+		    }
+		    100% {
+		        background-position: 0% 50%
+		    }
+		}
+		
+		body:not(.downloading) #progress-bar-container{
+			display:none;
+		}
+		
+		#progress-bar{
+		    display: inline-block;
+		    /*appearance: none;*/
+		    width: 100%;
+		    height: 20px;
+		    overflow: hidden;
+		    border: 0;
+		    border-radius: 10px;
+		    background-color: #999;
+		    color: purple;
+		}
+		
+		
+		#download-container{
+			display:flex;
+			flex-direction:column;
+		}
+		#download-container progress{
+			width:100%;
+		}
+		#download-container:not(:empty):before{
+			content:"Downloading";
+			display:block;
+		}
+		
+		#output-container{
+			padding:1rem;
+			margin-bottom:2rem;
+			border-radius:10px;
+		}
+		#output-container:empty{
+			display:none;
+		}
+		
+		#footer{
+			display:flex;
+		}
+		#footer-main{
+			flex-basis: 100%;
+		}
+		
+	</style>
+  </head>
+  <body class="not-downloaded-yet">
+	  
+	<div id="centered">
+		<div>
+			<div style="text-align:center">
+			<img id="logo" src="README_banner.png" width="200" alt="Wllama logo"/>
+			</div>
+			<h1>Mistral 7B in any browser</h1>
+    		<h2 class="text-base font-medium text-gray-700 mb-2 text-center">Made with <a href="https://github.com/ngxson/wllama">Wllama</a></h2>
+      		
+			
+			<div id="download-explanation">
+				<p><span class="hide-if-smaller"> This will download a 4.3 GB AI model to your device. Alternatively, you can also <a href="index.html?smaller">load a smaller 1GB model</a>.</span></p>
+			
+      			<p>Downloading only needs to happen once. The next time you open this page the AI model will load instantly from your browser's cache.</p>
+				<br/>
+			</div>
+			<!--
+			<button id="download-button">Download</button>
+			-->
+			
+			
+			
+			<div id="progress-bar-container">
+				<p>Downloading...</p>
+	    		<progress id="progress-bar" aria-label="Generating…"></progress>
+			</div>
+			
+			
+		</div>
+		
+		<div id="chat-container">
+			<div id="output-container"></div>
+		</div>
+		
+		<div id="footer">
+		
+			<div id="footer-main">
+	    		<label for="prompt" class="block text-sm font-medium text-gray-600">Prompt</label><br/>
+	      		<textarea id="prompt">What's the difference between red and green apples?</textarea><br/>
+	  
+	    		<div class="flex column setting">
+	    			<label>Creativity</label> 
+	    			<div class="flex">
+	    		    	0.1 <input id="temperature" type="range" min="0.1" max="1.4" step=".1" value="0.7"/> 1.4
+	    	  		</div>
+	        	</div>
+    		</div>
+	    
+			<div class="button-container">
+	      	  	<button id="submit-button"><img src="submit.svg" width="50" alt="submit"/></button>
+				<button id="interrupt-button">🛑</button>
+	    	</div>
+		
+	  	<div id="response"></div>
+	  
+	  	<div id="status"></div>
+		<div id="download-container"></div>
+    	<div id="downloading-model"></div>
+		
+		
+	  
+    	
+    </div>
+	  
+	  
+	  
+	  
+	<script type="module">
+		
+		import { Wllama } from './wllama/index.js';
+		
+		let model_downloaded = false;
+		let smaller_model = false;
+		
+		window.interrupt_wllama = false; // when set to true, this will interrupt inference that is in progress
+
+
+		const downloading_model_el = document.getElementById('downloading-model');
+		const download_container_el = document.getElementById('download-container');
+		
+		const prompt_el = document.getElementById('prompt');
+		
+		const progress_bar_container_el = document.getElementById('progress-bar-container');
+		const progress_bar_el = document.getElementById('progress-bar');
+		const duration_el = document.getElementById('duration');
+		const do_sample_el = document.getElementById('do-sample');
+		const temperature_el = document.getElementById('temperature');
+		const output_container_el = document.getElementById('output-container');
+		
+		const status_el = document.getElementById('status');
+		const response_el = document.getElementById('response');
+		
+		
+
+
+		// Wllama caches files in: wllama_cache
+		const CONFIG_PATHS = {
+		  'single-thread/wllama.js'       : './wllama/single-thread/wllama.js',
+		  'single-thread/wllama.wasm'     : './wllama/single-thread/wllama.wasm',
+		  'multi-thread/wllama.js'        : './wllama/multi-thread/wllama.js',
+		  'multi-thread/wllama.wasm'      : './wllama/multi-thread/wllama.wasm',
+		  'multi-thread/wllama.worker.mjs': './wllama/multi-thread/wllama.worker.mjs',
+		};
+		
+
+		// The simple version would be:
+		// window.llama_cpp_app = new Wllama(CONFIG_PATHS);
+		
+		// But here we showcase how you can parse output from Llama.cpp:
+	    window.llama_cpp_app = new Wllama(CONFIG_PATHS, {
+			logger: {
+				debug: (...args) => console.debug('🔧', ...args),
+				log: (...args) => console.log('ℹ️', ...args),
+				warn: (...args) => console.warn('⚠️', ...args),
+				error: (...args) => console.error('☠️', ...args),
+			},
+		});
+	    console.log("new Wllama object created: ", window.llama_cpp_app);
+
+		
+		let model_settings = {};
+		
+		let model_url = [
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00001-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00002-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00003-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00004-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00005-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00006-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00007-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00008-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00009-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00010-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00011-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00012-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00013-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00014-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00015-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00016-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00017-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00018-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00019-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00020-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00021-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00022-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00023-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00024-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00025-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00026-of-00027.gguf",
+"https://huggingface.co/BoscoTheDog/inspire_mistral_7B_32K_chunked/resolve/main/inspire-Mistral-7B-v2-DPO-V0.2.1-32k.Q3_K_S-00027-of-00027.gguf"
+		]
+		
+	    if(window.location.href.indexOf('smaller') != -1 || window.location.search.indexOf('smaller') != -1){
+			smaller_model = true;
+			model_url = 'https://huggingface.co/bartowski/h2o-danube2-1.8b-chat-GGUF/resolve/main/h2o-danube2-1.8b-chat-Q5_0.gguf';
+			document.body.classList.add('doing-smaller');
+	    }
+		
+		model_settings['n_ctx'] = 2048; // the desired context size
+		model_settings['n_seq_max'] = 1; // should generally be 1.
+		model_settings['n_batch'] = 1024; // the desired batch size
+		//model_settings['n_threads'] = 4; // You can manually set how many threads will be used. 
+		model_settings['cache_type_k'] = 'q4_0'; // can speed up most models by quantizing the context, but some models crash when it's enabled
+		
+		// Handle download progress
+		model_settings['progressCallback'] = ({ loaded, total }) => {
+			console.log(`Wllama: downloading... ${Math.round(loaded/total*100)}%`);
+			progress_bar_el.value = loaded/total;
+			if(loaded == total){
+				console.log("download complete");
+				progress_bar_container_el.style.display = 'none';
+			}
+		}
+		
+		
+		
+		
+		
+		// Download button
+		/*
+		const download_button = document.getElementById('download-button');
+		download_button.addEventListener('click', () => {
+			console.log("Starting model download");
+			download_model(model_url,model_settings);
+		});
+		*/
+		
+		// Interrupt button
+		const interrupt_button = document.getElementById('interrupt-button');
+		interrupt_button.addEventListener('click', () => {
+			console.log("Interrupting inference");
+			window.interrupt_wllama = true;
+		});
+		
+		// Submit button
+		const submit_button = document.getElementById('submit-button');
+		submit_button.addEventListener('click', () => {
+			console.log("Here we go");
+			//make_funky_music(prompt_el.value);
+			infer(prompt_el.value);
+		});
+		
+		
+		
+		// Download the AI model
+		async function download_model(model_url, model_settings){
+			console.log("in download_model.  model_url,model_settings: ", model_url, model_settings);
+			document.body.classList.add('downloading');
+			await window.llama_cpp_app.loadModelFromUrl(model_url, model_settings);
+			document.body.classList.remove('downloading');
+			document.body.classList.remove('not-downloaded-yet');
+		}
+		
+		
+		async function interrupt_wllama(){
+			console.log("in interrupt_wllama");
+			window.interrupt_wllama = true;
+		}
+		
+		// Do the actual inference
+		const infer = async (prompt) => {
+			console.log("in infer. prompt: ", prompt);
+			
+			if(typeof prompt == 'string' && prompt.length > 4){
+				
+				// The first time the model should be downloaded first
+				if(model_downloaded == false){
+					await download_model(model_url,model_settings);
+				}
+				
+				document.body.classList.add('running');
+				
+				prompt = `<|user|>
+				` + prompt +  `<|end|>
+				<|assistant|>
+				`;
+
+				//prompt = `<s>[INST]` + prompt +  `[/INST]</s>
+				//`
+				
+				if(smaller_model){
+					prompt = `<|prompt|>` + prompt +  `</s><|answer|>`;
+				}
+
+				try{
+			
+					let new_response_el = document.createElement('div');
+					new_response_el.classList.add('llm-response');
+			
+					let currentText = '';
+					let temperature = parseFloat(temperature_el.value);
+					let top_k = 40;
+					let top_p = 0.9;
+			
+			
+					const outputText = await window.llama_cpp_app.createCompletion(prompt, {
+			            nPredict: 500,
+			            sampling: {
+							temp: temperature,
+							top_k: top_k, //40,
+							top_p: top_p, //0.9,
+			            },
+			            onNewToken: (token, piece, currentText, { abortSignal }) => {
+		    				if (window.interrupt_wllama) {
+								console.log("sending interrupt signal to Wllama");
+								abortSignal();
+								window.interrupt_wllama = false;
+							}
+							else{
+								console.log("wllama: onNewToken:  token, piece, currentText:", token, piece, currentText);
+								output_container_el.textContent = currentText;
+							}
+			            },
+			        });
+					
+					document.body.classList.remove('running');
+				}
+				catch(err){
+					console.error("caught error running Wllama: ", err);
+					alert("Sorry, an error occured");
+					document.body.classList.remove('running');
+				}
+			}
+			else{
+				alert("Please provide a (longer) prompt");
+			}
+			
+		}
+
+		
+		
+		
+		
+		
+		
+	</script>
+	
+  </body>
+</html>
